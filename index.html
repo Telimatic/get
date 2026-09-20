@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>get.telimatic.com</title>
+<meta name="description" content="Install scripts and public files for Telimatic teammates.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #5b5f66;
+    --border: #d8dbe0;
+    --code-bg: #f4f5f7;
+    --accent: #0a5cd6;
+    --warn-bg: #fff7e6;
+    --warn-border: #e6a53c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --fg: #e8e9eb;
+      --muted: #9aa0a8;
+      --border: #33373d;
+      --code-bg: #1d2024;
+      --accent: #6fb0ff;
+      --warn-bg: #2a2210;
+      --warn-border: #a87a1f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    margin: 0;
+    padding: 0 16px;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 0 64px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+  .sub {
+    color: var(--muted);
+    margin-top: 0;
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 1.1rem;
+    margin-top: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 0.9rem;
+  }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .fingerprint {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .callout {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 16px 0;
+  }
+  a { color: var(--accent); }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.92rem;
+  }
+  td, th {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  footer {
+    margin-top: 48px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>get.telimatic.com</h1>
+  <p class="sub">Install scripts and public files for Telimatic teammates.</p>
+
+  <p>
+    This page hosts a script that makes your laptop trust the
+    <strong>Telimatic internal root CA</strong>, so <code>*.telimatic.internal</code>
+    addresses (internal dashboards, monitoring, admin tools) open in your browser
+    without a security warning. Everything on this site is public and reviewable —
+    see the <a href="https://github.com/Telimatic/get">source repository</a>.
+  </p>
+
+  <div class="callout">
+    <strong>Status:</strong> these scripts are UNTESTED on real macOS and Windows
+    machines as of 2026-09-20. <code>--show</code> is safe to run anywhere first —
+    it only downloads and inspects the certificate and changes nothing. See the
+    <a href="https://github.com/Telimatic/get/blob/main/README.md">README</a>
+    for what has and has not been verified before you rely on the install step.
+  </div>
+
+  <h2>Install</h2>
+  <p>macOS or Linux:</p>
+  <pre><code>curl -fsSL https://get.telimatic.com/ca/install.sh | bash</code></pre>
+  <p>Windows (PowerShell):</p>
+  <pre><code>irm https://get.telimatic.com/ca/install.ps1 | iex</code></pre>
+  <p>
+    Both scripts download the certificate themselves, verify its SHA-256
+    fingerprint against the value pinned inside the script, print the
+    certificate's subject, expiry and name constraint, and refuse to install
+    anything if the fingerprint does not match. Add <code>--show</code>
+    (shell) or run the scriptblock form with <code>-Show</code> (PowerShell,
+    see the README) to inspect without installing, and <code>--uninstall</code>
+    / <code>-Uninstall</code> to remove it later.
+  </p>
+
+  <h2>The certificate</h2>
+  <table>
+    <tr><th>Subject</th><td>O = Telimatic, CN = Telimatic Internal Root CA</td></tr>
+    <tr><th>Key</th><td>ECDSA P-384</td></tr>
+    <tr><th>Valid</th><td>2026-07-10 &rarr; 2126-07-10</td></tr>
+    <tr><th>Name constraint</th><td><strong>critical</strong>, permitted: <code>DNS:telimatic.internal</code></td></tr>
+  </table>
+  <p>SHA-256 fingerprint:</p>
+  <p class="fingerprint">4A:10:7F:F1:53:74:4D:A6:4C:70:DD:19:F5:1E:E9:F6:22:19:06:98:6F:E3:FB:D1:13:AE:18:01:95:C2:6C:79</p>
+
+  <h2>What trusting this CA means</h2>
+  <p>
+    This certificate carries a <strong>critical</strong> X.509 name constraint
+    permitting only <code>DNS:telimatic.internal</code>. A correct TLS client
+    that trusts this CA will accept certificates it signs
+    <strong>only</strong> for names ending in <code>telimatic.internal</code> —
+    it cannot vouch for <code>google.com</code>, your bank, or your employer's
+    real domain. Because the constraint is marked critical, a client that does
+    not understand name constraints must reject the certificate outright rather
+    than ignore the limit.
+  </p>
+  <p>
+    Whoever controls this CA's private key can mint a certificate for any
+    <code>*.telimatic.internal</code> name. That key lives only in three
+    regional Oracle Cloud vaults — never in this script, this repository, or on
+    any laptop. That is the same trust you already place in Telimatic's internal
+    services; it does not extend past <code>telimatic.internal</code>.
+  </p>
+  <p>
+    <strong>Firefox is not covered.</strong> It ships its own trust store. Set
+    <code>security.enterprise_roots.enabled</code> to <code>true</code> in
+    <code>about:config</code>, or import the certificate by hand under
+    Settings &rarr; Privacy &amp; Security &rarr; Certificates &rarr; Authorities.
+  </p>
+
+  <h2>Uninstall</h2>
+  <p>macOS or Linux:</p>
+  <pre><code>curl -fsSL https://get.telimatic.com/ca/install.sh | bash -s -- --uninstall</code></pre>
+  <p>Windows (PowerShell):</p>
+  <pre><code>&amp; ([scriptblock]::Create((irm https://get.telimatic.com/ca/install.ps1))) -Uninstall</code></pre>
+  <p>
+    Both scripts read the removal back and say so if something else — an MDM
+    profile, Group Policy — is putting the certificate back.
+  </p>
+
+  <footer>
+    Source and full documentation:
+    <a href="https://github.com/Telimatic/get">github.com/Telimatic/get</a>.
+    Large files do not belong here — see the README.
+  </footer>
+</main>
+</body>
+</html>

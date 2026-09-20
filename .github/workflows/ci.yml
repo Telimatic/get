@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck ca/install.sh
+        run: |
+          command -v shellcheck >/dev/null 2>&1 || sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck ca/install.sh
+
+      - name: bash -n ca/install.sh (syntax)
+        run: bash -n ca/install.sh
+
+      - name: pinned fingerprint matches the committed certificate
+        run: |
+          set -euo pipefail
+
+          CERT_FP="$(openssl x509 -in ca/telimatic-internal-root-ca.crt -noout -fingerprint -sha256 \
+            | cut -d= -f2 | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          echo "certificate fingerprint : ${CERT_FP}"
+
+          SH_FP="$(grep -m1 '^EXPECTED_FP=' ca/install.sh \
+            | sed -E 's/^EXPECTED_FP="([^"]*)".*/\1/' | tr -d ' ' | tr '[:lower:]' '[:upper:]')"
+          echo "install.sh pins         : ${SH_FP}"
+
+          PS1_FP="$(grep -m1 '^\$ExpectedFingerprint' ca/install.ps1 \
+            | sed -E "s/^\\\$ExpectedFingerprint = '([^']*)'.*/\\1/" | tr '[:lower:]' '[:upper:]')"
+          echo "install.ps1 pins        : ${PS1_FP}"
+
+          FAIL=0
+          if [ "${SH_FP}" != "${CERT_FP}" ]; then
+            echo "::error file=ca/install.sh::pinned fingerprint (${SH_FP}) does not match ca/telimatic-internal-root-ca.crt (${CERT_FP}). If the cert was rotated, update EXPECTED_FP here too."
+            FAIL=1
+          fi
+          if [ "${PS1_FP}" != "${CERT_FP}" ]; then
+            echo "::error file=ca/install.ps1::pinned fingerprint (${PS1_FP}) does not match ca/telimatic-internal-root-ca.crt (${CERT_FP}). If the cert was rotated, update \$ExpectedFingerprint here too."
+            FAIL=1
+          fi
+          if [ "${FAIL}" -ne 0 ]; then
+            exit 1
+          fi
+          echo "OK: both scripts pin the certificate's actual fingerprint."
+
+      - name: certificate is a certificate, not a private key
+        run: |
+          set -euo pipefail
+          if grep -q "PRIVATE KEY" ca/telimatic-internal-root-ca.crt; then
+            echo "::error file=ca/telimatic-internal-root-ca.crt::this file contains a PRIVATE KEY marker and must never be committed here. Stop."
+            exit 1
+          fi
+          openssl x509 -in ca/telimatic-internal-root-ca.crt -noout -subject -enddate
