@@ -4,11 +4,11 @@ Install scripts and public files for Telimatic teammates, served over GitHub Pag
 [get.telimatic.com](https://get.telimatic.com). Everything here is **public** — do not add
 anything that is not meant to be world-readable and permanently cacheable.
 
-> **Status, as of 2026-09-20: the scripts below are UNTESTED on real macOS and Windows
-> machines.** `--show` / `-Show` is safe to run anywhere first — it only downloads and
-> inspects the certificate and changes nothing on the machine. Test the full install path on a
-> real Mac and a real Windows machine before telling the team to rely on it. See "What was
-> actually tested" below for the detail.
+> **Status, as of 2026-10-15: the Windows install works; macOS is still UNTESTED.** A teammate
+> ran `install.ps1` on a real Windows PC on 2026-10-15 and reported that it worked. The macOS
+> keychain path has not been run on a real Mac. `--show` / `-Show` is safe to run anywhere first —
+> it only downloads and inspects the certificate and changes nothing on the machine. See "What
+> was actually tested" below for the detail.
 
 ## What's here
 
@@ -122,8 +122,9 @@ domain-joined PC — is putting the certificate back.
 | Fingerprint pin rejects a **valid but different** CA with the same subject | yes — watched it refuse, naming both fingerprints |
 | `shellcheck` on `install.sh` | yes — clean |
 | **macOS keychain install/uninstall** | **NO — not exercised on a real Mac. Run `--show` first, then install on one Mac and confirm before telling the team.** |
-| **Windows certificate-store install/uninstall** | **NO — not exercised on a real Windows machine. Same advice.** |
-| **`install.ps1`'s download/decode/pin-check path on a real Windows or PowerShell 7 runtime** | **NO — adapted from a version that was tested with an embedded certificate; the download path itself is new and unexercised end to end on PowerShell.** |
+| Windows certificate-store **install** | yes — a teammate ran `irm https://get.telimatic.com/ca/install.ps1 \| iex` on a real Windows PC on 2026-10-15 and reported that it worked (reported in Slack; whether the shell was elevated, and the PowerShell version, were not recorded) |
+| **Windows certificate-store uninstall** (`-Uninstall`) | **NO — not exercised on a real Windows machine.** |
+| `install.ps1`'s download/decode/pin-check path on real Windows | yes — the 2026-10-15 install above ran it end to end. PowerShell 7 on another OS is not exercised. |
 
 ## Hosting
 
