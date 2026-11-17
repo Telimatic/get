@@ -17,6 +17,8 @@ anything that is not meant to be world-readable and permanently cacheable.
 | `ca/telimatic-internal-root-ca.crt` | The Telimatic internal root CA's **public** certificate (no private key). |
 | `ca/install.sh` | Trusts the CA on macOS and Linux. |
 | `ca/install.ps1` | Trusts the CA on Windows. |
+| `setup/telimatic-setup.sh` | Team setup for macOS and Linux: the CA trust, the `step` CLI with no Homebrew, `step` settings, and `step ssh login`. |
+| `setup/telimatic-setup.ps1` | The same for Windows. |
 | `index.html` | The page at [get.telimatic.com](https://get.telimatic.com). |
 
 ## Trust the Telimatic internal root CA
@@ -47,6 +49,35 @@ store, or import the certificate by hand under **Settings → Privacy & Security
 View Certificates → Authorities → Import**. Chrome, Edge and Safari read the OS store and need
 nothing extra — except **Chrome on Linux**, which reads NSS (`~/.pki/nssdb`); `install.sh` handles
 that too when `certutil` is installed.
+
+## Team setup: CA trust, the step CLI and an SSH certificate
+
+`setup/` holds the one-command laptop setup from the `Telimatic/ansible` repository
+(`bin/team-setup`, ansible#1699). It does four things and prints them before it changes
+anything: it trusts the CA (as above), installs `step` 0.31.0 pinned by SHA-256, points `step`
+at `https://ssh-ca.telimatic.internal`, and runs `step ssh login`. The sign-in needs a row in the
+ansible `users` list; a person with no row runs the CA part only.
+
+```sh
+curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash                  # everything
+curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash -s -- --show     # look, change nothing
+curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash -s -- --ca-only  # CA trust only
+```
+
+```powershell
+irm https://get.telimatic.com/setup/telimatic-setup.ps1 | iex
+& ([scriptblock]::Create((irm https://get.telimatic.com/setup/telimatic-setup.ps1))) -Show
+& ([scriptblock]::Create((irm https://get.telimatic.com/setup/telimatic-setup.ps1))) -CaOnly
+```
+
+- Unlike `ca/install.*`, these scripts **embed** the certificate (they do not download it) and
+  pin its fingerprint. CI checks that both the embedded certificate and the pin equal
+  `ca/telimatic-internal-root-ca.crt`.
+- The copies here differ from the ansible source only in the usage lines, where `<url>` is now
+  `https://get.telimatic.com/setup`. Until the source moves here, change the scripts in ansible
+  first (its rig, `tests/team-setup-rig`, tests them there), then copy them here.
+- **Not yet run on a real Mac or on Windows** (the ansible README lists what its rig does not
+  cover). `--show` / `-Show` is safe anywhere.
 
 ## The certificate, and where it comes from
 

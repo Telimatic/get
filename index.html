@@ -141,6 +141,17 @@
     / <code>-Uninstall</code> to remove it later.
   </p>
 
+  <h2>Team setup (CA, step CLI, SSH certificate)</h2>
+  <p>
+    One command that also installs the <code>step</code> CLI and signs you in for an SSH
+    certificate. It is new and not yet run on a real Mac or Windows PC; see the
+    <a href="https://github.com/Telimatic/get/blob/main/README.md">README</a>.
+  </p>
+  <p>macOS or Linux:</p>
+  <pre><code>curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash</code></pre>
+  <p>Windows (PowerShell):</p>
+  <pre><code>irm https://get.telimatic.com/setup/telimatic-setup.ps1 | iex</code></pre>
+
   <h2>The certificate</h2>
   <table>
     <tr><th>Subject</th><td>O = Telimatic, CN = Telimatic Internal Root CA</td></tr>

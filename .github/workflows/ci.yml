@@ -57,3 +57,36 @@ jobs:
             exit 1
           fi
           openssl x509 -in ca/telimatic-internal-root-ca.crt -noout -subject -enddate
+
+      # setup/telimatic-setup.{sh,ps1}: the team setup scripts (CA trust + the step CLI + step ssh
+      # login), copied from Telimatic/ansible bin/team-setup. They EMBED the certificate and pin its
+      # fingerprint, so both copies must equal ca/telimatic-internal-root-ca.crt: a root rotation
+      # that forgets them fails here.
+      - name: shellcheck and bash -n setup/telimatic-setup.sh
+        run: |
+          shellcheck setup/telimatic-setup.sh
+          bash -n setup/telimatic-setup.sh
+
+      - name: setup scripts embed and pin the committed certificate
+        run: |
+          set -euo pipefail
+          norm() { tr -d ' :\r' | tr '[:lower:]' '[:upper:]'; }
+          CERT_FP="$(openssl x509 -in ca/telimatic-internal-root-ca.crt -noout -fingerprint -sha256 | cut -d= -f2 | norm)"
+          SH_PIN="$(grep -m1 '^EXPECTED_FP=' setup/telimatic-setup.sh | sed -E 's/^EXPECTED_FP="([^"]*)".*/\1/' | norm)"
+          SH_EMBED="$(sed -n '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' setup/telimatic-setup.sh \
+            | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2 | norm)"
+          PS1_PIN="$(grep -m1 '^\$TelimaticExpectedFingerprint' setup/telimatic-setup.ps1 | sed -E "s/^[^']*'([^']*)'.*/\1/" | norm)"
+          PS1_EMBED="$(sed -n "/^\$TelimaticCertBase64 = @'/,/^'@/p" setup/telimatic-setup.ps1 | sed '1d;$d' \
+            | tr -d '\r' | base64 -d | openssl x509 -inform DER -noout -fingerprint -sha256 | cut -d= -f2 | norm)"
+          echo "certificate       : ${CERT_FP}"
+          echo "sh pin / embedded : ${SH_PIN} / ${SH_EMBED}"
+          echo "ps1 pin / embedded: ${PS1_PIN} / ${PS1_EMBED}"
+          FAIL=0
+          for v in "${SH_PIN}" "${SH_EMBED}" "${PS1_PIN}" "${PS1_EMBED}"; do
+            if [ "${v}" != "${CERT_FP}" ]; then FAIL=1; fi
+          done
+          if [ "${FAIL}" -ne 0 ]; then
+            echo "::error::a setup script's pinned or embedded certificate differs from ca/telimatic-internal-root-ca.crt"
+            exit 1
+          fi
+          echo "OK: both setup scripts embed and pin the committed certificate."
