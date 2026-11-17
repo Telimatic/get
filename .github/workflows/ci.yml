@@ -90,3 +90,13 @@ jobs:
             exit 1
           fi
           echo "OK: both setup scripts embed and pin the committed certificate."
+
+      # The behaviour rig, moved from Telimatic/ansible tests/team-setup-rig (only its path constants
+      # changed): it RUNS setup/telimatic-setup.sh on a temporary HOME with fake step, curl, sudo,
+      # ssh-add, uname and macOS security, checks the static pins (one step version in both scripts,
+      # the .ps1 ASCII only and with no `exit`), and runs pwsh-rig.ps1 on the .ps1 (ubuntu-latest
+      # has pwsh). Hermetic: no network, and its fake sudo refuses every system write.
+      - name: team-setup rig (both setup scripts, fake HOME, pwsh)
+        run: |
+          command -v pwsh
+          python3 tests/team-setup-rig/run.py

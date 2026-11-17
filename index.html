@@ -151,6 +151,12 @@
   <pre><code>curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash</code></pre>
   <p>Windows (PowerShell):</p>
   <pre><code>irm https://get.telimatic.com/setup/telimatic-setup.ps1 | iex</code></pre>
+  <p>
+    The certificate part only (no <code>step</code>, no sign-in):
+    <code>curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash -s -- --ca-only</code>
+    or, in PowerShell,
+    <code>&amp; ([scriptblock]::Create((irm https://get.telimatic.com/setup/telimatic-setup.ps1))) -CaOnly</code>.
+  </p>
 
   <h2>The certificate</h2>
   <table>
