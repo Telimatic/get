@@ -8,7 +8,8 @@ anything that is not meant to be world-readable and permanently cacheable.
 > ran `install.ps1` on a real Windows PC on 2026-10-15 and reported that it worked. The macOS
 > keychain path has not been run on a real Mac. `--show` / `-Show` is safe to run anywhere first —
 > it only downloads and inspects the certificate and changes nothing on the machine. See "What
-> was actually tested" below for the detail.
+> was actually tested" below for the detail. The `setup/` scripts (below) have NOT been run on a
+> real Mac or a real Windows PC yet.
 
 ## What's here
 
@@ -17,6 +18,8 @@ anything that is not meant to be world-readable and permanently cacheable.
 | `ca/telimatic-internal-root-ca.crt` | The Telimatic internal root CA's **public** certificate (no private key). |
 | `ca/install.sh` | Trusts the CA on macOS and Linux. |
 | `ca/install.ps1` | Trusts the CA on Windows. |
+| `setup/telimatic-setup.sh` | Team setup for macOS and Linux: the CA trust, the `step` CLI with no Homebrew, `step` settings, and `step ssh login`. |
+| `setup/telimatic-setup.ps1` | The same for Windows. |
 | `index.html` | The page at [get.telimatic.com](https://get.telimatic.com). |
 
 ## Trust the Telimatic internal root CA
@@ -48,6 +51,43 @@ View Certificates → Authorities → Import**. Chrome, Edge and Safari read the
 nothing extra — except **Chrome on Linux**, which reads NSS (`~/.pki/nssdb`); `install.sh` handles
 that too when `certutil` is installed.
 
+## Team setup: CA trust, the step CLI and an SSH certificate
+
+`setup/` holds the one-command laptop setup from the `Telimatic/ansible` repository
+(`bin/team-setup`, ansible#1699). It does four things and prints them before it changes
+anything: it trusts the CA (as above), installs one pinned `step` release checked by SHA-256 (the
+version is `STEP_VERSION` in the `.sh` and `$TelimaticStepVersion` in the `.ps1`), points `step`
+at `https://ssh-ca.telimatic.internal`, and runs `step ssh login`. The sign-in needs a row in the
+ansible `users` list; a person with no row runs the CA part only.
+
+```sh
+curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash                  # everything
+curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash -s -- --show     # look, change nothing
+curl -fsSL https://get.telimatic.com/setup/telimatic-setup.sh | bash -s -- --ca-only  # CA trust only
+```
+
+```powershell
+irm https://get.telimatic.com/setup/telimatic-setup.ps1 | iex
+& ([scriptblock]::Create((irm https://get.telimatic.com/setup/telimatic-setup.ps1))) -Show
+& ([scriptblock]::Create((irm https://get.telimatic.com/setup/telimatic-setup.ps1))) -CaOnly
+```
+
+- Unlike `ca/install.*`, these scripts **embed** the certificate (they do not download it) and
+  pin its fingerprint. CI checks that both the embedded certificate and the pin equal
+  `ca/telimatic-internal-root-ca.crt`.
+- The copies here differ from the ansible source only in the usage lines, where `<url>` is now
+  `https://get.telimatic.com/setup`. Until one copy is chosen as the source, a change to the
+  scripts goes to both repositories in the same way.
+- **Tests:** `tests/team-setup-rig/run.py` (moved from ansible; CI runs it) runs the `.sh` on a
+  temporary HOME with fake `step`, `curl`, `sudo`, `ssh-add`, `uname` and macOS `security`, checks
+  the static pins (one step version in both scripts, the `.ps1` ASCII only and with no `exit`), and
+  runs `tests/team-setup-rig/pwsh-rig.ps1` on the `.ps1` when `pwsh` is on PATH. `--network` also
+  downloads the real pinned archives (by hand).
+- **Not covered by any test:** the macOS keychain and the Windows certificate stores, the Windows
+  user PATH and the `ssh-agent` service, Windows PowerShell 5.1, the macOS build running on a real
+  Mac, and a real `step ssh login`. **Not yet run on a real Mac or on Windows.** `--show` / `-Show`
+  is safe anywhere.
+
 ## The certificate, and where it comes from
 
 | | |
@@ -62,9 +102,11 @@ The version-controlled source of truth is
 `roles/internal-ca-trust/files/telimatic-internal-root-ca.crt` in the `Telimatic/ansible`
 repository — the same file the `internal-ca-trust` role installs on every Telimatic VM. **Edit the
 certificate there, not here**; this repository's copy is what the scripts fetch and pin against,
-and both scripts' pinned fingerprint changes in the same commit as any cert rotation.
+and every pinned fingerprint and embedded copy here changes in the same commit as any cert
+rotation: `ca/install.sh`, `ca/install.ps1`, `setup/telimatic-setup.sh` and
+`setup/telimatic-setup.ps1`. CI fails if any of them differs from `ca/telimatic-internal-root-ca.crt`.
 
-Neither script embeds the certificate. Each downloads it fresh, every run, from
+The two `ca/install.*` scripts do not embed the certificate. Each downloads it fresh, every run, from
 `https://get.telimatic.com/ca/telimatic-internal-root-ca.crt` — the same origin that served the
 script — and refuses to install anything unless the download's SHA-256 fingerprint equals the
 value pinned inside the script. Prove the committed copy matches the pin:
@@ -83,8 +125,9 @@ forgets to update the pin in both scripts fails CI.
 Each script carries the expected SHA-256 separately from the download and refuses to install
 anything if they disagree. **Anyone who could alter what `get.telimatic.com` serves could alter
 the pinned value in the script too**, since both are served from the same origin — this is not
-protection against a hostile origin. The HTTPS connection to `get.telimatic.com`, and whatever
-review gates a change to this repository, is what protects you there.
+protection against a hostile origin. The HTTPS connection to `get.telimatic.com`, and the review
+gate on this repository, is what protects you there: the ruleset `protect-main` on `main` refuses a
+direct push, a force-push and a deletion, and requires a pull request and the `verify` check.
 
 What the pin does catch: a truncated download, a mangled copy-and-paste if you saved a script by
 hand, and a certificate quietly swapped in a diff nobody read. It also gives you a value to
@@ -125,6 +168,7 @@ domain-joined PC — is putting the certificate back.
 | Windows certificate-store **install** | yes — a teammate ran `irm https://get.telimatic.com/ca/install.ps1 \| iex` on a real Windows PC on 2026-10-15 and reported that it worked (reported in Slack; whether the shell was elevated, and the PowerShell version, were not recorded) |
 | **Windows certificate-store uninstall** (`-Uninstall`) | **NO — not exercised on a real Windows machine.** |
 | `install.ps1`'s download/decode/pin-check path on real Windows | yes — the 2026-10-15 install above ran it end to end. PowerShell 7 on another OS is not exercised. |
+| `setup/telimatic-setup.sh` and `.ps1` on a real Mac or a real Windows PC | **NO.** Only the rig in `tests/team-setup-rig` (fakes) and `pwsh` 7.4 on Linux. |
 
 ## Hosting
 
